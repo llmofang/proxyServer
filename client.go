@@ -15,18 +15,18 @@ func handle(err error) {
 }
 
 func main() {
-        cert, err := tls.LoadX509KeyPair("./cert/clientTLS/client.pem", "./cert/clientTLS/client.key")
-        if err != nil {
-                fmt.Printf("server: loadkeys: %s", err)
-        }
-        config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true, NextProtos: []string{"spdy/3"}}
-        conn, err := tls.Dial("tcp", "127.0.0.1:8080", &config)
-        if err != nil {
-                fmt.Printf("client: dial: %s", err)
-        }
+	cert, err := tls.LoadX509KeyPair("./cert/clientTLS/client.pem", "./cert/clientTLS/client.key")
+	if err != nil {
+		fmt.Printf("server: loadkeys: %s", err)
+	}
+	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true, NextProtos: []string{"spdy/3"}}
+	conn, err := tls.Dial("tcp", "127.0.0.1:8080", &config)
+	if err != nil {
+		fmt.Printf("client: dial: %s", err)
+	}
 	client, err := spdy.NewClientConn(conn)
 	handle(err)
-	req, err := http.NewRequest("GET", "http://baidu.com", nil)
+	req, err := http.NewRequest("GET", "http://baidu.com/spdf", nil)
 	handle(err)
 	res, err := client.Do(req)
 	handle(err)
