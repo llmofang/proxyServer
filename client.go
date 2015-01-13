@@ -26,7 +26,7 @@ func main() {
 	}
 	client, err := spdy.NewClientConn(conn)
 	handle(err)
-	req, err := http.NewRequest("GET", "http://baidu.com/spdf", nil)
+	req, err := http.NewRequest("GET", "https://baidu.com/spdf", nil)
 	handle(err)
 	res, err := client.Do(req)
 	handle(err)

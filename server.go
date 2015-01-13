@@ -2,8 +2,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"bufio"
 	"regexp"
-	//"io/ioutil"	
+	//"io/ioutil"
+	"net"	
 	"net/http"
 	"github.com/amahi/spdy"
 	"github.com/op/go-logging"
@@ -18,7 +20,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
 	host := r.Header.Get(":host")
 	path := r.Header.Get(":path")
-	uri:="http://"+host + path
+	scheme:=r.Header.Get(":scheme")
+	uri:=scheme+host+path
+
 	if m := rePath. FindStringSubmatch(path); m != nil{
 		if m[1]==host {
 			uri=path
@@ -26,9 +30,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	fmt.Printf("%v", r.Header)
+	log.Error(r.Method)
+	if r.Method == CONNECT {
+		conn, err := net.Dial("tcp",host)
+		if err != nil {
+			log.Printf("Conection failed: %v", err)
+			return
+		}
+		fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+		status, err := bufio.NewReader(conn).ReadString('\n')
 
-	if r.Method == "CONNECT" {
-		
+		fmt.Printf("%v", status)
+
+
 	} else {
 		req, err := http.NewRequest(method, uri , nil) 
 		handleError(err)
@@ -36,7 +50,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		for headerKey := range r.Header{
 			headerVal := r.Header.Get(headerKey)
-			
+
 			req.Header.Set(headerKey, headerVal)
 		}
 
@@ -61,7 +75,7 @@ func handleError(err error) {
 	}
 }
 func main() {
-	//spdy.EnableDebug()
+	spdy.EnableDebug()
 	http.HandleFunc("/", handler)
 	log.Info("Launching SPDY on :8080")
 	err := spdy.ListenAndServeTLS(":8080", "./cert/serverTLS/server.pem", "./cert/serverTLS/server.key" , nil)
