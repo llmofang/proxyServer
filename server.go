@@ -25,12 +25,23 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
+	fmt.Printf("%v", r.Header)
 
 	if r.Method == "CONNECT" {
 		
 	} else {
 		req, err := http.NewRequest(method, uri , nil) 
 		handleError(err)
+		
+
+		for headerKey := range r.Header{
+			headerVal := r.Header.Get(headerKey)
+			
+			req.Header.Set(headerKey, headerVal)
+		}
+
+		req.Header.Set("User-Agent", "LLMF PROXY SERVER")
+
 		resp, err := httpClient.Do(req)
 		handleError(err)
 		defer resp.Body.Close()
