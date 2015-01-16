@@ -6,68 +6,69 @@ import (
 	//"bufio"
 	"regexp"
 	//"io/ioutil"
-	//"net"	
+	"net"	
 	"net/http"
 	"github.com/amahi/spdy"
 )
 var httpClient *http.Client = &http.Client{}
 var rePath = regexp.MustCompile("^https?://([a-zA-Z0-9\\.\\-]+(\\:\\d+)?)/");
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("%v",r.Header)
 
-	return
-	method := r.Method
-	host := r.Header.Get(":host")
-	path := r.Header.Get(":path")
-	scheme:=r.Header.Get(":scheme")
-	uri:=scheme+host+path
+type Handler struct {
+	host string
+	pipeConns []net.Conn
+}
+func NewHandler() *Handler {
+	return &Handler{}
+}
+func  (h *Handler) proxyHttp(response http.ResponseWriter, request *http.Request){
 
-	if m := rePath. FindStringSubmatch(path); m != nil{
-		if m[1]==host {
-			uri=path
-		}
+}
+func  (h *Handler) proxyHttps(response http.ResponseWriter, request *http.Request) {
+	
+	fmt.Println("%v",request.Header.Get(":host"))
+	hj, ok := response.(http.Hijacker)
+	if !ok {
+		http.Error(response, "webserver doesn't support hijacking", http.StatusInternalServerError)
+		return
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		http.Error(response, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	
+	//check filters
+	//if ProxyHeaderFilter(conn, request) {
+	//	//inject something, so close the connection
+	//	defer conn.Close()
+	//	return
+	//}
+
+	//process real https proxy
+	serverConn, err := net.Dial("tcp", request.Header.Get(":host"))
+	if err != nil {
+		return
+	}
+
+	conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
+	"Content-Type: text/html\r\n" +
+	"Content-Length: 200\r\n" +
+	"\r\n"));
+
+	go io.Copy(serverConn, conn)
+	go io.Copy(conn, serverConn)
+
+	h.pipeConns = append(h.pipeConns, conn)
+}
+
+func  (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
+	log.Info("NEW REQUEST")
+	fmt.Println("%v",r)
 	if r.Method == "CONNECT" {
-		//local, err := net.Listen("tcp", localAddr)
-		//conn, err := net.Dial("tcp",host)
-		//if err != nil {
-		//	//log.Printf("Conection failed: %v", err)
-		//	return
-		//}
-		//fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
-		//status, err := bufio.NewReader(conn).ReadString('\n')
-//
-		//fmt.Printf("%v", status)
-
-
+		//h.proxyHttps(w,r)
 	} else {
-	
-		req, err := http.NewRequest(method, uri , nil) 
-		handleError(err)
-		log.Info("Feach: " + uri)
-
-		for headerKey := range r.Header{
-			headerVal := r.Header.Get(headerKey)
-			req.Header.Set(headerKey, headerVal)
-		}
-
-		//req.Header.Set("User-Agent", "LLMF PROXY SERVER")
-
-		resp, err := httpClient.Do(req)
-		handleError(err)
-		defer resp.Body.Close()
-
-		for headerKey := range resp.Header {
-			headerVal := resp.Header.Get(headerKey)
-			w.Header().Set(headerKey, headerVal)
-		}
-		//body, _ := ioutil.ReadAll(resp.Body)
-		io.Copy(w, resp.Body)
-		
+		//h.proxyHttp(w,r)
 	}
-
 }
 
 
@@ -78,8 +79,9 @@ func handleError(err error) {
 }
 
 func main() {
-	spdy.EnableDebug()
-	http.HandleFunc("/", handler)
+	//spdy.EnableDebug()
+	handler := NewHandler()
+	http.HandleFunc("/", handler.handle)
 	//log.Info("Launching SPDY on :8080")
 	//fmt.Println("%v",proxy)
 	err := spdy.ListenAndServeTLS(":8080", "../cert/serverTLS/server.pem", "../cert/serverTLS/server.key" , nil)
