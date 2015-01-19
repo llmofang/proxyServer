@@ -3,13 +3,15 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	
+	"flag"
 	"io"
-	"net"
+	//"net"
 	"net/http"
 	"github.com/amahi/spdy"
 )
 
+var Addr = flag.String("l", ":9999", "local address")
+var tlsConfig  *tls.Config
 type Handler struct {
 	client *spdy.Client
 	conn *tls.Conn
@@ -20,8 +22,9 @@ func NewHandler() *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//fmt.Println("%v", r.Header)
-	var url string
+	//var url string
 	if r.Method == "CONNECT" {
+		
 		hj, ok := w.(http.Hijacker)
 		if !ok {
 			http.Error(w, "webserver doesn't support hijacking", http.StatusInternalServerError)
@@ -33,43 +36,48 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
+		/*
 		url ="https:"+r.URL.String()
 		fmt.Println("%+v\n",r)
 		fmt.Println("%v\n",url)
 		fmt.Println("%v\n",r.Host)
 		fmt.Println("%+v\n",r.Header)
-/*
+
 		req, err := http.NewRequest(r.Method,url,nil) 
 		handle(err)
 		res, err := h.client.Do(req)
-		handle(err)
-		if res ==nil{
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}	
-
-		/*
-		serverConn, err := net.Dial("tcp",r.Host)
-		if err != nil {
-			return
-		}
-		fmt.Println("%+v\n",serverConn)
+		data := make([]byte, int(res.ContentLength))
+		_, err = res.Body.(io.Reader).Read(data)
+		fmt.Println(string(data))
+		res.Body.Close()
 		*/
-		fmt.Println("datil new conn")
-		serverConn, err := net.Dial("tcp","127.0.0.1:8080")
-		if err != nil {
-			panic(err)
-			return
-		}
-		
+		serverConn, err := tls.Dial("tcp", "127.0.0.1:8080", tlsConfig)
+
 		conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
 		"Content-Type: text/html\r\n" +
 		"Content-Length: 200\r\n" +
 		"\r\n"));	
 		go io.Copy(serverConn, conn)
 		go io.Copy(conn,serverConn)
+
+		/*
+
+		if res ==nil{
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}	
+		fmt.Println("%v",res)
+		fmt.Println("%v",conn)
+
+		conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
+		"Content-Type: text/html\r\n" +
+		"Content-Length: 200\r\n" +
+		"\r\n"));	
+		go io.Copy(serverConn, conn)
+		go io.Copy(conn,serverConn)
+		*/
 	}else{
-		url = r.URL.String()
+		//url = r.URL.String()
 	}
 /*
 	req, err := http.NewRequest(r.Method,r.URL.String(),nil) 
@@ -94,8 +102,8 @@ func main() {
 	if err != nil {
 		fmt.Printf("server: loadkeys: %s", err)
 	}
-	config := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true, NextProtos: []string{"spdy/3"}}
-	conn, err := tls.Dial("tcp", "127.0.0.1:8080", &config)
+	tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true, NextProtos: []string{"spdy/3"}}
+	conn, err := tls.Dial("tcp", "127.0.0.1:8080", tlsConfig)
 	if err != nil {
 		fmt.Printf("client: dial: %s", err)
 	}

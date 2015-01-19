@@ -1,5 +1,6 @@
 package main
 import (
+	"flag"
 	"fmt"
 	"io"
 	//"os"
@@ -10,6 +11,9 @@ import (
 	"net/http"
 	"github.com/amahi/spdy"
 )
+
+var connid = uint64(0)
+var Addr = flag.String("l", ":9999", "local address")
 var httpClient *http.Client = &http.Client{}
 var rePath = regexp.MustCompile("^https?://([a-zA-Z0-9\\.\\-]+(\\:\\d+)?)/");
 
@@ -88,7 +92,4 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-
-
-
 }
