@@ -3,6 +3,6 @@ import(
 	//"io"
 	"net/http"
 )
-func proxyHttp(response http.ResponseWriter, request *http.Request){
+func  (h *Handler) proxyHttp(response http.ResponseWriter, request *http.Request){
 
 }

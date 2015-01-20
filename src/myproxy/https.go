@@ -2,14 +2,12 @@ package myproxy
 import(
 	"io"
 	"net"
+	"fmt"
 	"net/http"
 )
-
-type Proxy struct {
-    pipeConns []net.Conn
-}
-
-func (p *Proxy) proxyHttps(response http.ResponseWriter, request *http.Request) {
+func  (h *Handler) proxyHttps(response http.ResponseWriter, request *http.Request) {
+	
+	fmt.Println("%v",request.Header.Get(":host"))
 	hj, ok := response.(http.Hijacker)
 	if !ok {
 		http.Error(response, "webserver doesn't support hijacking", http.StatusInternalServerError)
@@ -20,20 +18,10 @@ func (p *Proxy) proxyHttps(response http.ResponseWriter, request *http.Request) 
 		http.Error(response, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	//check filters
-	//if ProxyHeaderFilter(conn, request) {
-	//	//inject something, so close the connection
-	//	defer conn.Close()
-	//	return
-	//}
-
-	//process real https proxy
-	serverConn, err := net.Dial("tcp", request.Host)
+	serverConn, err := net.Dial("tcp", request.Header.Get(":host"))
 	if err != nil {
 		return
 	}
-
 	conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
 	"Content-Type: text/html\r\n" +
 	"Content-Length: 200\r\n" +
@@ -42,5 +30,5 @@ func (p *Proxy) proxyHttps(response http.ResponseWriter, request *http.Request) 
 	go io.Copy(serverConn, conn)
 	go io.Copy(conn, serverConn)
 
-	p.pipeConns = append(p.pipeConns, conn)
+	h.pipeConns = append(h.pipeConns, conn)
 }
