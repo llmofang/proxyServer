@@ -3,7 +3,7 @@ import (
 	"os"
 	"github.com/op/go-logging"
 )
-var log = logging.MustGetLogger("main")
+var log = logging.MustGetLogger("myproxy")
 var logFormat = logging.MustStringFormatter(
 	"%{color}%{time:15:04:05.000000} %{shortfunc} ▶ %{message}%{color:reset}")
 var logBackend = logging.NewLogBackend(os.Stderr, "", 0)
