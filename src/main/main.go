@@ -1,28 +1,19 @@
-
 package main
 
-import (
+import(
 	"myproxy"
-	//"bytes"
-	//"fmt"
-	//"io"
 	"log"
 	"net/http"
-
-	"github.com/amahi/spdy"
 )
 
-
-func main() {
-	spdy.EnableDebug()
-	handler := myproxy.NewHandler()
-	http.HandleFunc("/",handler.Handle)
-
-
-	//handler := spdy.ProxyConnHandlerFunc(handleProxy)
-	//http.Handle("/", spdy.ProxyConnections(handler))
-	err := spdy.ListenAndServeTLS(":8080", "../cert/serverTLS/server.pem", "../cert/serverTLS/server.key" , nil)
+func main(){
+	file := &File{}
+	file.mkdir(Config.logMainPath+Config.logSubPath,750)
+	file.cd(Config.logMainPath+Config.logSubPath)
+	accesslog :=file.touch(Config.logAccessFileName,610)
+	handler := myproxy.NewHandler(accesslog)
+	err := http.ListenAndServe(":8080",handler)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
-	}	
+	}
 }
