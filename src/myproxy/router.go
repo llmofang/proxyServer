@@ -2,7 +2,7 @@ package myproxy
 
 import(
 	"bytes"
-	"fmt"
+	//"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -115,10 +115,6 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 	//handleError(err)
 	copyHeader(newResponse.Header, w.Header())
 	w.WriteHeader(newResponse.StatusCode)
-	
-	webLog := &webLogger{
-		file : h.logFile,
-	} 
 	if newResponse.ContentLength==-1{
 		io.Copy(buf,newResponse.Body)
 		//log.Error(buf.String())
@@ -129,6 +125,9 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 		io.Copy(w,newResponse.Body)
 	}
 	buf.Close()
+	webLog := &webLogger{
+		file : h.logFile,
+	} 	
 	go func(){
 	 	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
 	 	webLog.write()
@@ -138,6 +137,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 
 
 func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "webserver doesn't support hijacking", http.StatusInternalServerError)
@@ -159,7 +159,15 @@ func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
 	// go io.Copy(serverConn,conn)
 	// go io.Copy(conn,serverConn)
 	total := Pipe(serverConn,conn)
-	fmt.Println(total)
+	webLog := &webLogger{
+		file : h.logFile,
+	} 	
+	go func(){
+	 	webLog.formatLog(ip,"-","CONNECT","https://"+r.Host,r.Proto ,200,total, r.Header.Get("User-Agent")) 
+	 	webLog.write()
+		//webLog.dumpLog()
+	}()
+	//fmt.Println(total)
 }
 
 
