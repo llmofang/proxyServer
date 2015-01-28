@@ -4,16 +4,16 @@ import(
 	"log"
 )
 
-type File struct {
+type Command struct {
 	path string
 }
 
-func (f *File) cd(path string){
-	f.path = path
+func (c *Command) cd(path string){
+	c.path = path
 }
 
-func (f *File)  touch(name string,perm os.FileMode) string{
-	_p := f.path+name
+func (c *Command)  touch(name string,perm os.FileMode) string{
+	_p := c.path+name
 	file, err := os.Open(_p) 
 	if err != nil {
 		newfile, err := os.Create(_p)
@@ -27,7 +27,7 @@ func (f *File)  touch(name string,perm os.FileMode) string{
 	return _p
 }
 
-func (f *File)  mkdir(path string,perm os.FileMode){
+func (c *Command)  mkdir(path string,perm os.FileMode){
 	err :=os.Mkdir(path,perm) //750
 	if err != nil {
 		if !os.IsExist(err){
@@ -35,6 +35,6 @@ func (f *File)  mkdir(path string,perm os.FileMode){
 		}
 	}	
 }
-func (f *File)  pwd()  string{
-	return f.path
+func (c *Command)  pwd()  string{
+	return c.path
 }

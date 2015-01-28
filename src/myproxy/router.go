@@ -3,7 +3,6 @@ package myproxy
 import(
 	"bytes"
 	//"fmt"
-	//"time"
 	"io"
 	"net"
 	"net/http"
@@ -57,26 +56,34 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 	newRequest, err := http.NewRequest(r.Method, requestURL, buf)
 	//handleError(err)
 	copyHeader(r.Header,newRequest.Header)
+	l :=len(buf.String())
+	newRequest.ContentLength = int64(l)
 	newResponse, err := transport.RoundTrip(newRequest)
+	buf.Reset()
 	//fmt.Println("%v",newResponse)
 	if err != nil {
 		http.NotFound(w,r)
 		return
 	}	
 	defer newResponse.Body.Close()
-
 	//_, err = io.Copy(buf, newResponse.Body)
-
 	//handleError(err)
-
-	//fmt.Fprintf(response,  buf.String())
-
 	copyHeader(newResponse.Header, w.Header())
 	w.WriteHeader(newResponse.StatusCode)
-	io.Copy(w,newResponse.Body)
-             webLog := &webLogger{
-             	file : h.logFile,
-             } 
+	
+	webLog := &webLogger{
+		file : h.logFile,
+	} 
+	if newResponse.ContentLength==-1{
+		io.Copy(buf,newResponse.Body)
+		//log.Error(buf.String())
+		l :=len(buf.String())
+		newResponse.ContentLength = int64(l)
+		io.Copy(w,buf)
+	}else{
+		io.Copy(w,newResponse.Body)
+	}
+	buf.Close()
  	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
  	webLog.write()
 	//webLog.dumpLog()
