@@ -35,6 +35,6 @@ func (f *File)  mkdir(path string,perm os.FileMode){
 		}
 	}	
 }
-func (f *File)  pwd() {
-
+func (f *File)  pwd()  string{
+	return f.path
 }

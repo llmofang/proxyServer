@@ -3,10 +3,9 @@ package myproxy
 import(
 	"bytes"
 	//"fmt"
-	"time"
+	//"time"
 	"io"
 	"net"
-	"regexp"
 	"net/http"
 )
 
@@ -40,9 +39,6 @@ func cacheFile(){
 
 }
 
-func writeLog(){
-
-}
 
 func  copyHeader(from, to http.Header) {
 	for hdr, items := range from {
@@ -50,15 +46,6 @@ func  copyHeader(from, to http.Header) {
 			to.Add(hdr, item)
 		}
 	}
-}
-func parseRequestUrl(w *http.Request) string {
-	var requestURL string
-	if m, _ := regexp.MatchString("^http[s]{0,1}://.*$", w.RequestURI); m {
-		requestURL = w.RequestURI
-	} else {
-		requestURL = "http://" + w.Host + w.RequestURI
-	}
-	return requestURL
 }
 
 func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
@@ -84,22 +71,15 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 
 	//fmt.Fprintf(response,  buf.String())
 
-
-
 	copyHeader(newResponse.Header, w.Header())
-
-	
-
-	if newResponse.StatusCode!=200{
-		
-	}
-
 	w.WriteHeader(newResponse.StatusCode)
-
 	io.Copy(w,newResponse.Body)
-
-	logstr := formatLog(ip,"-",time.Now().Format("02/Jan/2006:15:04:05 -0700"),r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
-	log.Info(logstr)
+             webLog := &webLogger{
+             	file : h.logFile,
+             } 
+ 	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
+ 	webLog.write()
+	//webLog.dumpLog()
 }
 
 func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
