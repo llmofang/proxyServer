@@ -2,7 +2,7 @@ package myproxy
 
 import(
 	"bytes"
-	//"fmt"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -47,6 +47,51 @@ func  copyHeader(from, to http.Header) {
 	}
 }
 
+func chanFromConn(conn net.Conn) chan []byte {
+	c := make(chan []byte)
+	go func() {
+		b := make([]byte, 1024)
+		for {
+			n, err := conn.Read(b)
+			if n > 0 {
+				res := make([]byte, n)
+				// Copy the buffer so it doesn't get changed while read by the recipient.
+				copy(res, b[:n])
+				c <- res
+			}
+			if err != nil {
+				c <- nil
+				break
+			}
+		}
+	}()
+
+	return c
+}
+
+func Pipe(conn1 net.Conn, conn2 net.Conn)  int64{
+	chan1 := chanFromConn(conn1)
+	chan2 := chanFromConn(conn2)
+	total := 0
+	for {
+		total ++
+		select {
+			case b1 := <-chan1:
+			if b1 == nil {
+				return int64(total*1024) 
+			} else {
+				conn2.Write(b1)
+			}
+			case b2 := <-chan2:
+			if b2 == nil {
+				return int64(total*1024) 
+			} else {
+				conn1.Write(b2)
+			}
+		}
+	}
+}
+
 func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	transport := &http.Transport{}
@@ -84,10 +129,13 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 		io.Copy(w,newResponse.Body)
 	}
 	buf.Close()
- 	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
- 	webLog.write()
-	//webLog.dumpLog()
+	go func(){
+	 	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
+	 	webLog.write()
+		//webLog.dumpLog()
+	}()
 }
+
 
 func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
 	hj, ok := w.(http.Hijacker)
@@ -108,11 +156,10 @@ func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
 	"Content-Type: text/html\r\n" +
 	"Content-Length: 200\r\n" +
 	"\r\n"));
-
-	go io.Copy(serverConn, conn)
-	go io.Copy(conn, serverConn)
-
-	//h.pipeConns = append(h.pipeConns, conn)
+	// go io.Copy(serverConn,conn)
+	// go io.Copy(conn,serverConn)
+	total := Pipe(serverConn,conn)
+	fmt.Println(total)
 }
 
 
