@@ -1,6 +1,7 @@
 package myproxy
 
 import(
+	"radius"
 	"bytes"
 	//"fmt"
 	"io"
@@ -8,20 +9,32 @@ import(
 	"net/http"
 )
 
+var rh radius.Helper
+
 type Handler struct {
 	logFile string
-	pipeConns []net.Conn
 }
 
 type buffer struct {
 	bytes.Buffer
 }
 
+type user struct {
+	authorization string
+	total int64
+	remain int64
+}
+
 func (b *buffer) Close() error {
 	return nil
 }
 
-func NewHandler(logfile string) *Handler {
+func NewHandler(logfile string,redisaddr string) *Handler {
+	rh =radius.Helper{
+		Addr :redisaddr,
+	}
+	rh.Init();
+	rh.Test();
 	return &Handler{
 		logFile : logfile,
 	}
@@ -69,7 +82,7 @@ func chanFromConn(conn net.Conn) chan []byte {
 	return c
 }
 
-func Pipe(conn1 net.Conn, conn2 net.Conn)  int64{
+func pipeAndCount(conn1 net.Conn, conn2 net.Conn)  int64{
 	chan1 := chanFromConn(conn1)
 	chan2 := chanFromConn(conn2)
 	total := 0
@@ -92,7 +105,7 @@ func Pipe(conn1 net.Conn, conn2 net.Conn)  int64{
 	}
 }
 
-func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
+func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	transport := &http.Transport{}
 	buf := new(buffer)
@@ -101,8 +114,16 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 	newRequest, err := http.NewRequest(r.Method, requestURL, buf)
 	//handleError(err)
 	copyHeader(r.Header,newRequest.Header)
-	l :=len(buf.String())
-	newRequest.ContentLength = int64(l)
+	l :=int64(len(buf.String()))
+	if l > u.remain{
+		rh.SetDataRemain(u.authorization,0)
+		http.Error(w,"Unauthorized", http.StatusUnauthorized)
+		return	
+	}
+	u.remain -= l
+	rh.SetDataRemain(u.authorization,u.remain)
+	//u.remain = 
+	newRequest.ContentLength = l
 	newResponse, err := transport.RoundTrip(newRequest)
 	buf.Reset()
 	//fmt.Println("%v",newResponse)
@@ -113,15 +134,29 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 	defer newResponse.Body.Close()
 	//_, err = io.Copy(buf, newResponse.Body)
 	//handleError(err)
-	copyHeader(newResponse.Header, w.Header())
-	w.WriteHeader(newResponse.StatusCode)
-	if newResponse.ContentLength==-1{
+	l = newResponse.ContentLength
+	if l==-1{
 		io.Copy(buf,newResponse.Body)
 		//log.Error(buf.String())
-		l :=len(buf.String())
-		newResponse.ContentLength = int64(l)
+		l = int64(len(buf.String()))
+		newResponse.ContentLength = l
+		if l > u.remain{
+			rh.SetDataRemain(u.authorization,0)
+			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			return	
+		}
+		copyHeader(newResponse.Header, w.Header())
+		w.WriteHeader(newResponse.StatusCode)
 		io.Copy(w,buf)
 	}else{
+		if l > u.remain{
+			
+			rh.SetDataRemain(u.authorization,0)
+			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			return	
+		}
+		copyHeader(newResponse.Header, w.Header())
+		w.WriteHeader(newResponse.StatusCode)
 		io.Copy(w,newResponse.Body)
 	}
 	buf.Close()
@@ -136,7 +171,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request){
 }
 
 
-func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
+func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request,u *user) {
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
 	hj, ok := w.(http.Hijacker)
 	if !ok {
@@ -158,7 +193,7 @@ func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
 	"\r\n"));
 	// go io.Copy(serverConn,conn)
 	// go io.Copy(conn,serverConn)
-	total := Pipe(serverConn,conn)
+	total := pipeAndCount(serverConn,conn)
 	webLog := &webLogger{
 		file : h.logFile,
 	} 	
@@ -174,18 +209,29 @@ func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) DebugURL(response http.ResponseWriter, request *http.Request) {
 
-
 }
 
 func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//log.Info("NEW REQUEST")
 	if r.Method == "" {
 		http.Error(w,"Bad Request", http.StatusBadRequest)
 		return
 	}
+	authorization:= r.Header.Get("Llmf-Proxy-Authorization")
+	total,remain :=  rh.GetDataInfo(authorization) 
+	/*
+	if authorization == "" || -1 == remain{
+		http.Error(w,"Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	*/
+	u := &user{
+		authorization:authorization,
+		total:total,
+		remain:remain,
+	}
 	if r.Method == "CONNECT" {
-		h.proxyHttps(w,r)
+		h.proxyHttps(w,r,u)
 	} else {
-		h.proxyHttp(w,r)
+		h.proxyHttp(w,r,u)
 	}
 }
