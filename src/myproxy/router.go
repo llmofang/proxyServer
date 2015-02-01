@@ -21,7 +21,7 @@ type buffer struct {
 
 type user struct {
 	authorization string
-	total int64
+	userid string
 	remain int64
 }
 
@@ -30,8 +30,10 @@ func (b *buffer) Close() error {
 }
 
 func NewHandler(logfile string,redisaddr string) *Handler {
+
+	client := radius. InitClient(redisaddr,0,"",100)
 	rh =radius.Helper{
-		Addr :redisaddr,
+		Client:client,
 	}
 	rh.Init();
 	rh.Test();
@@ -110,22 +112,24 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	transport := &http.Transport{}
 	buf := new(buffer)
 	requestURL := r.URL.String()
-	io.Copy(buf, r.Body)
+	l := int64(0)
+	if r.Method == "POST" || r.Method =="PUT" {
+		io.Copy(buf, r.Body)// to fix
+		l =int64(len(buf.String()))
+		if l > u.remain{
+			rh.SetDataRemain(u.authorization,0)
+			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			return	
+		}
+		u.remain -= l	
+		rh.SetDataRemain(u.authorization,u.remain)	
+	}	
 	newRequest, err := http.NewRequest(r.Method, requestURL, buf)
 	//handleError(err)
+	buf.Reset()
 	copyHeader(r.Header,newRequest.Header)
-	l :=int64(len(buf.String()))
-	if l > u.remain{
-		rh.SetDataRemain(u.authorization,0)
-		http.Error(w,"Unauthorized", http.StatusUnauthorized)
-		return	
-	}
-	u.remain -= l
-	rh.SetDataRemain(u.authorization,u.remain)
-	//u.remain = 
 	newRequest.ContentLength = l
 	newResponse, err := transport.RoundTrip(newRequest)
-	buf.Reset()
 	//fmt.Println("%v",newResponse)
 	if err != nil {
 		http.NotFound(w,r)
@@ -150,7 +154,6 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 		io.Copy(w,buf)
 	}else{
 		if l > u.remain{
-			
 			rh.SetDataRemain(u.authorization,0)
 			http.Error(w,"Unauthorized", http.StatusUnauthorized)
 			return	
@@ -160,6 +163,8 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 		io.Copy(w,newResponse.Body)
 	}
 	buf.Close()
+	u.remain -=l
+	rh.SetDataRemain(u.authorization,u.remain)
 	webLog := &webLogger{
 		file : h.logFile,
 	} 	
@@ -217,7 +222,9 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	authorization:= r.Header.Get("Llmf-Proxy-Authorization")
-	total,remain :=  rh.GetDataInfo(authorization) 
+	r.Header.Del("Llmf-Proxy-Authorization")
+	authorization= "anbo1v1y5"
+	userid,remain :=  rh.GetDataInfo(authorization) 
 	/*
 	if authorization == "" || -1 == remain{
 		http.Error(w,"Unauthorized", http.StatusUnauthorized)
@@ -226,7 +233,7 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	*/
 	u := &user{
 		authorization:authorization,
-		total:total,
+		userid:userid,
 		remain:remain,
 	}
 	if r.Method == "CONNECT" {
