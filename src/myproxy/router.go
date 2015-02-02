@@ -3,7 +3,7 @@ package myproxy
 import(
 	"radius"
 	"bytes"
-	//"fmt"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -51,8 +51,8 @@ func handleError(err error) {
 
 func cacheFile(){
 
-}
 
+}
 
 func  copyHeader(from, to http.Header) {
 	for hdr, items := range from {
@@ -107,15 +107,30 @@ func pipeAndCount(conn1 net.Conn, conn2 net.Conn)  int64{
 	}
 }
 
+func spdyHeaderToNormal(h *http.Header){
+	var hArr [] string = [] string{":method",":host",":path",":version",":scheme",":Via"}
+	for _, v:= range hArr{
+		h.Del(v)
+	}
+}
+
 func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
+	var requestURL string
 	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
-	transport := &http.Transport{}
-	buf := new(buffer)
-	requestURL := r.URL.String()
 	l := int64(0)
+	buf := new(buffer)
+	if r.Header.Get(":method")!=""{
+		
+		requestURL = "http://"+ r.Header.Get(":host") + r.Header.Get(":path")
+		spdyHeaderToNormal(&r.Header)
+	}else{
+		requestURL = r.URL.String()
+	}
+	fmt.Println("%v\n", r.Header)
+	transport := &http.Transport{}
 	if r.Method == "POST" || r.Method =="PUT" {
 		io.Copy(buf, r.Body)// to fix
-		l =int64(len(buf.String()))
+		l :=int64(len(buf.String()))
 		if l > u.remain{
 			rh.SetDataRemain(u.authorization,0)
 			http.Error(w,"Unauthorized", http.StatusUnauthorized)
@@ -123,7 +138,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 		}
 		u.remain -= l	
 		rh.SetDataRemain(u.authorization,u.remain)	
-	}	
+	}
 	newRequest, err := http.NewRequest(r.Method, requestURL, buf)
 	//handleError(err)
 	buf.Reset()
@@ -142,7 +157,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	if l==-1{
 		io.Copy(buf,newResponse.Body)
 		//log.Error(buf.String())
-		l = int64(len(buf.String()))
+		l = int64(len(buf.Bytes()))//int64(buf.Len())
 		newResponse.ContentLength = l
 		if l > u.remain{
 			rh.SetDataRemain(u.authorization,0)
@@ -167,11 +182,11 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	rh.SetDataRemain(u.authorization,u.remain)
 	webLog := &webLogger{
 		file : h.logFile,
-	} 	
+	} 		
 	go func(){
 	 	webLog.formatLog(ip,"-",r.Method,requestURL,r.Proto ,newResponse.StatusCode,newResponse.ContentLength, r.Header.Get("User-Agent")) 
 	 	webLog.write()
-		//webLog.dumpLog()
+		webLog.dumpLog()
 	}()
 }
 
@@ -225,12 +240,12 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Del("Llmf-Proxy-Authorization")
 	authorization= "anbo1v1y5"
 	userid,remain :=  rh.GetDataInfo(authorization) 
-	/*
-	if authorization == "" || -1 == remain{
+
+	if  -1 == remain{
 		http.Error(w,"Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	*/
+
 	u := &user{
 		authorization:authorization,
 		userid:userid,

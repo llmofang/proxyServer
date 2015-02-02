@@ -56,5 +56,5 @@ func (h *Helper) MinusData(i int64) int64{
 
 
 func (h *Helper) Test(){
-	h.Client.Hmset("request_token_anbo1v1y5",map[string]interface{}{"user_id":1,"data_left":81920,"data_type":0} )
+	h.Client.Hmset("request_token_anbo1v1y5",map[string]interface{}{"user_id":1,"data_left":8192000,"data_type":0} )
 }
