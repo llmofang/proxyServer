@@ -3,7 +3,7 @@ package myproxy
 import(
 	"radius"
 	"bytes"
-	"fmt"
+	//"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -126,7 +126,6 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	}else{
 		requestURL = r.URL.String()
 	}
-	fmt.Println("%v\n", r.Header)
 	transport := &http.Transport{}
 	if r.Method == "POST" || r.Method =="PUT" {
 		io.Copy(buf, r.Body)// to fix
@@ -232,6 +231,7 @@ func (h *Handler) DebugURL(response http.ResponseWriter, request *http.Request) 
 }
 
 func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("%v",r)
 	if r.Method == "" {
 		http.Error(w,"Bad Request", http.StatusBadRequest)
 		return

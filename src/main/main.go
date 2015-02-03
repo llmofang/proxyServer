@@ -13,14 +13,18 @@ func startNormalProxy(h http.Handler){
 }
 
 func startSpdyProxy(h http.Handler){
+	spdy.EnableDebug()
 	spdy.ListenAndServeTLS(":8081", "../cert/serverTLS/server.pem", "../cert/serverTLS/server.key",h)
 }
 
-func main(){
+func prepareLogFile() string{
 	command:= &Command{}
 	command.mkdir(Config.logMainPath+Config.logSubPath,750)
 	command.cd(Config.logMainPath+Config.logSubPath)
-	accesslog :=command.touch(Config.logAccessFileName,610)
+	return command.touch(Config.logAccessFileName,610)	
+}
+func main(){
+	accesslog := prepareLogFile();
 	handler := myproxy.NewHandler(accesslog,Config.redisServerAddr)
 	go startSpdyProxy(handler)
 	startNormalProxy(handler)
