@@ -219,7 +219,7 @@ func  (h *Handler) proxyHttps(w http.ResponseWriter, r *http.Request,u *user) {
 	go func(){
 	 	webLog.formatLog(ip,"-","CONNECT","https://"+r.Host,r.Proto ,200,total, r.Header.Get("User-Agent")) 
 	 	webLog.write()
-		//webLog.dumpLog()
+		webLog.dumpLog()
 	}()
 	//fmt.Println(total)
 }
@@ -231,19 +231,34 @@ func (h *Handler) DebugURL(response http.ResponseWriter, request *http.Request) 
 }
 
 func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("%v",r)
 	if r.Method == "" {
 		http.Error(w,"Bad Request", http.StatusBadRequest)
 		return
 	}
 	authorization:= r.Header.Get("Llmf-Proxy-Authorization")
+	//authorization = "anbo1v1y5"
 	r.Header.Del("Llmf-Proxy-Authorization")
-	authorization= "anbo1v1y5"
 	userid,remain :=  rh.GetDataInfo(authorization) 
-
 	if  -1 == remain{
-		http.Error(w,"Unauthorized", http.StatusUnauthorized)
-		return
+		w.Header().Set("Content-Type","application/json")
+		http.Error(w,"{\"code\":401} ", http.StatusUnauthorized)
+		return		
+		/*
+		if r.Method == "CONNECT"{
+			conn, _, err := w.(http.Hijacker).Hijack()
+			if err != nil {
+				conn.Close()
+			}		
+			conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
+				"Content-Type: text/html\r\n" +
+				"Content-Length: 200\r\n" +
+				"\r\n"));
+			defer conn.Close()
+		}else{
+			http.Error(w,"Unauthorized ", http.StatusUnauthorized)
+			return
+		}
+		*/
 	}
 
 	u := &user{

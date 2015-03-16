@@ -27,16 +27,18 @@ func (h *Helper) GetDataInfo(token string)(string,int64) {
 	if token == ""{
 		return "0" ,int64(-1)
 	}
-	data, err := h.Client.Hmget("request_token_"+token,"user_id","data_left")
+	data_request, err := h.Client.Hmget("request_token_"+token,"user_id")
 	if err!=nil{
-		//fmt.Println("%v",err)
 		return "0" ,int64(-1)
 	}
+	data, err := h.Client.Hmget("user_data_"+string(data_request[0]),"user_id","data_left")
+	if err!=nil{
+		return "0" ,int64(-1)
+	}	
 	r,err := strconv.ParseInt(string(data[1]),10,64)
 	if err != nil{
 		r = -1
 	}
-	//fmt.Println("%v",r)
 	return string(data[0]) ,r
 }
 
@@ -53,8 +55,7 @@ func (h *Helper) MinusData(i int64) int64{
 	return int64(0)
 }
 
-
-
 func (h *Helper) Test(){
-	h.Client.Hmset("request_token_anbo1v1y5",map[string]interface{}{"user_id":1,"data_left":8192000,"data_type":0} )
+	h.Client.Hmset("request_token_anbo1v1y5",map[string]interface{}{"user_id":"demouser_anbo1v1y5"} )
+	h.Client.Hmset("user_data_demouser_anbo1v1y5",map[string]interface{}{"user_id":"demouser_anbo1v1y5","data_left":8192000,"data_type":0} )
 }
