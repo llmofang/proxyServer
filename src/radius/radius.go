@@ -23,28 +23,28 @@ func InitClient(addr string,db int,password string,maxpoolsize int )  redis.Clie
 	return client
 }
 
-func (h *Helper) GetDataInfo(token string)(string,int64) {
+func (h *Helper) GetDataInfo(token string)(string,int,int64,string) {//userid,appid,remain,whitelist 
 	if token == ""{
-		return "0" ,int64(-1)
+		//return "0" ,int64(-1)
 	}
-	data_request, err := h.Client.Hmget("request_token_"+token,"user_id")
+	data_request, err := h.Client.Hmget("request_token_"+token,"user_id","app_id")
 	if err!=nil{
-		return "0" ,int64(-1)
+		//return "0" ,int64(-1)
 	}
-	data, err := h.Client.Hmget("user_data_"+string(data_request[0]),"user_id","data_left")
+	data_data, err := h.Client.Hmget("user_data_"+string(data_request[0])+"_"+string(data_request[1]),"user_id","data_left","whitelist_pattern")
 	if err!=nil{
-		return "0" ,int64(-1)
+		//return "0" ,int64(-1)
 	}	
-	r,err := strconv.ParseInt(string(data[1]),10,64)
+	remain_data,err := strconv.ParseInt(string(data_data[1]),10,64)
 	if err != nil{
 		r = -1
 	}
-	return string(data[0]) ,r
+	return string(data_request[0]) ,int(data_request[1]),remain_data,string(data_data[2]) 
 }
 
 func (h *Helper) SetDataRemain(token string,remain int64){
 	//fmt.Println("%v\n",remain)
-	h.Client.Hset("request_token_"+token, "data_left",[]byte(strconv.FormatInt(remain,10)))
+	//h.Client.Hset("request_token_"+token, "data_left",[]byte(strconv.FormatInt(remain,10)))
 }
 
 func (h *Helper) AddData() int64{

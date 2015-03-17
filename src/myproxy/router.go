@@ -238,7 +238,7 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	authorization:= r.Header.Get("Llmf-Proxy-Authorization")
 	//authorization = "anbo1v1y5"
 	r.Header.Del("Llmf-Proxy-Authorization")
-	userid,remain :=  rh.GetDataInfo(authorization) 
+	userid,appid,remain,whitelist :=  rh.GetDataInfo(authorization) 
 	if  -1 == remain{
 		w.Header().Set("Content-Type","application/json")
 		http.Error(w,"{\"code\":401} ", http.StatusUnauthorized)
