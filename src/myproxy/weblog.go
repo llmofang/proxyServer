@@ -11,8 +11,8 @@ type webLogger struct {
 	log string
 }
 
-func (w *webLogger)formatLog(ip string,user string,method string,path string,proto string ,status int, size int64, agent string){
-	w.log=ip+" - "+user+" ["+time.Now().Format("02/Jan/2006:15:04:05 -0700")+"] \""+method+" "+path+" "+proto+"\" "+strconv.Itoa(status)+" "+strconv.FormatInt(size,10)+" \"-\" \""+agent+"\""
+func (w *webLogger)formatLog(ip string,user string,app string,method string,path string,proto string ,status int, size int64, agent string){
+	w.log=ip+" "+user+" "+app+" ["+time.Now().Format("02/Jan/2006:15:04:05 -0700")+"] \""+method+" "+path+" "+proto+"\" "+strconv.Itoa(status)+" "+strconv.FormatInt(size,10)+" \"-\" \""+agent+"\""
 }
  
 func (w *webLogger) dumpLog(){ 
