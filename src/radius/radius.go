@@ -1,6 +1,6 @@
 package radius
 import(
-	"fmt"
+	//"fmt"
 	"strconv"
 	"github.com/hoisie/redis"
 )
@@ -27,11 +27,11 @@ func (h *Helper) GetDataInfo(token string)(string,string,int64,string) {//userid
 	if token == ""{
 		return "0" ,"0",int64(-1),""
 	}
-	data_request, err := h.Client.Hmget("request_token_"+token,"user_id","app_id")
+	data_request, err := h.Client.Hmget("request_token_"+token,"user_id","app_id","whitelist_pattern")
 	if err!=nil{
 		return "0" ,"0",int64(-1),""
 	}
-	data_data, err := h.Client.Hmget("user_data_"+string(data_request[0])+"_"+string(data_request[1]),"user_id","data_left","whitelist_pattern")
+	data_data, err := h.Client.Hmget("user_data_"+string(data_request[0])+"_"+string(data_request[1]),"user_id","data_left")
 	if err!=nil{
 		return "0" ,"0",int64(-1),""
 	}	
@@ -39,7 +39,7 @@ func (h *Helper) GetDataInfo(token string)(string,string,int64,string) {//userid
 	if err != nil{
 		remain_data = -1
 	}
-	return string(data_request[0]) ,string(data_request[1]),remain_data,string(data_data[2]) 
+	return string(data_request[0]) ,string(data_request[1]),remain_data,string(data_request[2]) 
 }
 
 func (h *Helper) SetDataRemain(key string,remain int64){

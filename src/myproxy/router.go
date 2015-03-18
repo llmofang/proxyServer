@@ -270,8 +270,7 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	userid,appid,remain,whitelist :=  rh.GetDataInfo(authorization) 
 	if  -1 == remain{
 		h.ServeError(w,r,"100")
-		return		
-
+		return
 	}
 	whitelist = ""
 	if "" != whitelist{
