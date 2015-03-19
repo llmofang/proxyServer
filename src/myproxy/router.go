@@ -134,7 +134,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 		l :=int64(len(buf.String()))
 		if l > u.remain{
 			rh.SetDataRemain(data_key,0)
-			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			h.ServeError(w,r,"100")
 			return	
 		}
 		u.remain -= l	
@@ -162,7 +162,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 		newResponse.ContentLength = l
 		if l > u.remain{
 			rh.SetDataRemain(data_key,0)
-			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			h.ServeError(w,r,"100")
 			return	
 		}
 		copyHeader(newResponse.Header, w.Header())
@@ -171,7 +171,7 @@ func  (h *Handler) proxyHttp(w http.ResponseWriter, r *http.Request,u *user){
 	}else{
 		if l > u.remain{
 			rh.SetDataRemain(data_key,0)
-			http.Error(w,"Unauthorized", http.StatusUnauthorized)
+			h.ServeError(w,r,"100")
 			return	
 		}
 		copyHeader(newResponse.Header, w.Header())
@@ -239,24 +239,23 @@ func (h *Handler) DebugURL(response http.ResponseWriter, request *http.Request) 
 }
 
 func (h *Handler) ServeError(w http.ResponseWriter, r *http.Request,code string){
-	w.Header().Set("Content-Type","application/json")
-	http.Error(w,"{\"code\":"+code+"} ", http.StatusUnauthorized)
-	/*
+
+	
 	if r.Method == "CONNECT"{
 		conn, _, err := w.(http.Hijacker).Hijack()
 		if err != nil {
 			conn.Close()
 		}		
-		conn.Write([]byte("HTTP/1.1 200 Connection Established\r\n" +
+		conn.Write([]byte("HTTP/1.1 401 Authorization Required\r\n" +
 			"Content-Type: text/html\r\n" +
 			"Content-Length: 200\r\n" +
 			"\r\n"));
 		defer conn.Close()
 	}else{
-		http.Error(w,"Unauthorized ", http.StatusUnauthorized)
-		return
+		w.Header().Set("Content-Type","application/json")
+		http.Error(w,"{\"code\":"+code+"} ", http.StatusUnauthorized)
 	}
-	*/	
+	
 }
 
 func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -264,8 +263,9 @@ func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w,"Bad Request", http.StatusBadRequest)
 		return
 	}
-	authorization:= r.Header.Get("Llmf-Proxy-Authorization")
-	//authorization = "844acabcd784af7b51db6d27c0114d38132c77408aa794fb980890001fdabdcd84b0ec1c6267e2a42e716881bcf8f1a77d5e6ddb74be17087999ac3b91f043a5"
+	authorization:= r.Header.Get("Proxy-Authorization")
+	//fmt.Println("%v",r.Header)
+	//authorization = "f72e903dab05735ad7d15008193f84b1c6f9a2d01928fc6fbe760bd47eadc8fb4e577f06be430b9743239d64a2a7b8cba060141a7c5cc4464d02c6daa80f275e"
 	r.Header.Del("Llmf-Proxy-Authorization")
 	userid,appid,remain,whitelist :=  rh.GetDataInfo(authorization) 
 	if  -1 == remain{
