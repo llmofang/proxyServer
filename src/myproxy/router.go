@@ -262,17 +262,17 @@ func (h *Handler) ServeError(w http.ResponseWriter, r *http.Request,code string,
 }
 
 func  (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("%v",r)
-
 	if r.Method == "" {
 		http.Error(w,"Bad Request", http.StatusBadRequest)
 		return
 	}
 	authorization:= r.Header.Get("Proxy-Authorization")
-	fmt.Println("%v",authorization)
+	fmt.Println("%v",r.Header)
+	fmt.Println("%v",r.Method)
+	//fmt.Println("%v",authorization)
+	log.Info(authorization);
 	//authorization = "f72e903dab05735ad7d15008193f84b1c6f9a2d01928fc6fbe760bd47eadc8fb4e577f06be430b9743239d64a2a7b8cba060141a7c5cc4464d02c6daa80f275e"
-	r.Header.Del("Llmf-Proxy-Authorization")
+	r.Header.Del("Proxy-Authorization")
 	flag,userid,appid,remain,whitelist :=  rh.GetDataInfo(authorization) 
 	if 0 != flag {
 		var errMsg string 
